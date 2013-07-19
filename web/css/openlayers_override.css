@@ -1,0 +1,14 @@
+.olControlOverviewMapElement {
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+    background-color: #888888 !important;
+    opacity: 0.8;
+}
+
+.olControlNavigationItemActive .olButton, .olControlZoomBoxItemInactive.olButton {
+    z-index: 3000 !important;
+}
+
+#OpenLayers.Control.NavToolbar_6 {
+    top:0 !important;
+}
