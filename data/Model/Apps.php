@@ -30,44 +30,47 @@ class Model_Apps {
         // close curl resource to free up system resources
         curl_close($ch);
 
-        $geometry = $content->renderGeometryArray;
         $html = str_get_html($content->html);
+        
 
-        $featureCollection = new Model_FeatureCollection();
-
-        $informations = array();
-        $indexTable = 1;
-        foreach ($html->find('table') as $table) {
-            if ($indexTable % 2 != 0) {
-                $informations[] = $table->plaintext;
-            } else {
-                $tdInfo = array();
-                foreach ($table->find('td') as $td) {
-                    $tdInfo[] = $td->plaintext;
+        if (empty($html)) {
+            $featureCollection = null;
+        } else {
+            $featureCollection = new Model_FeatureCollection();
+            $geometry = $content->renderGeometryArray;
+            $informations = array();
+            $indexTable = 1;
+            foreach ($html->find('table') as $table) {
+                if ($indexTable % 2 != 0) {
+                    $informations[] = $table->plaintext;
+                } else {
+                    $tdInfo = array();
+                    foreach ($table->find('td') as $td) {
+                        $tdInfo[] = $td->plaintext;
+                    }
+                    $informations[] = $tdInfo;
                 }
-                $informations[] = $tdInfo;
+                $indexTable++;
             }
-            $indexTable++;
-        }
 
-        $count = count($informations) / 2;
-        for ($indexArray = 0; $indexArray < $count; $indexArray++) {
-            $arrayToEdit = $informations[($indexArray * 2) + 1];
-            $limit = count($arrayToEdit) / 2;
-            $labels = array_slice($arrayToEdit, 0, $limit);
-            $values = array_slice($arrayToEdit, $limit, count($arrayToEdit) - 1);
+            $count = count($informations) / 2;
+            for ($indexArray = 0; $indexArray < $count; $indexArray++) {
+                $arrayToEdit = $informations[($indexArray * 2) + 1];
+                $limit = count($arrayToEdit) / 2;
+                $labels = array_slice($arrayToEdit, 0, $limit);
+                $values = array_slice($arrayToEdit, $limit, count($arrayToEdit) - 1);
 
-            $properties = array(
-                'title' => $informations[($indexArray * 2)],
-                'labels' => $labels,
-                'values' => $values
-            );
-            $feature = new Model_Feature($geometry[$indexArray][0], $properties);
-            $featureCollection->addFeature($feature);
+                $properties = array(
+                    'title' => $informations[($indexArray * 2)],
+                    'labels' => $labels,
+                    'values' => $values
+                );
+                $feature = new Model_Feature($geometry[$indexArray][0], $properties);
+                $featureCollection->addFeature($feature);
+            }
         }
         return $featureCollection;
     }
-
 }
 
 ?>

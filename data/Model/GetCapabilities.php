@@ -38,19 +38,22 @@ class Model_GetCapabilities {
     }
 
     public function getCapabilities() {
+        header('Content-Type: text/plain; charset="ISO-8859-1"');
         // create curl resource
         $ch = curl_init();
         // set url
         curl_setopt($ch, CURLOPT_URL, $this->url);
         //return the transfer as a string
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLINFO_HEADER_OUT, true);        
+        curl_setopt($ch, CURLOPT_HTTPHEADER, Array('Content-Type: text/plain; charset=ISO-8859-1'));
         // $output contains the output string
         $wms = curl_exec($ch);
-        // close curl resource to free up system resources
         curl_close($ch);
-        
-        $wms = mb_convert_encoding($wms, "UTF-8", mb_detect_encoding($wms));
-        $xml = new SimpleXMLElement($wms);
+        $wms = json_encode($wms);
+        $wms = preg_replace('/\\\u([0-9a-z]{4})/', '&#x$1;', $wms);
+        $xml = new SimpleXMLElement(json_decode($wms));
+        // close curl resource to free up system resources
         return $xml;
     }
 

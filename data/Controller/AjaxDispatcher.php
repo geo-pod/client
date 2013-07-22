@@ -24,8 +24,8 @@ class Controller_AjaxDispatcher {
         $this->action = $parameters['action'];
 
         switch ($this->action) {
-            case "getLastAction":
-                return $this->getLastAction();
+            case "getAction":
+                return isset($_REQUEST['action']) ? $_REQUEST['action'] : null;
                 break;
 
             case "getConfig":
@@ -49,7 +49,12 @@ class Controller_AjaxDispatcher {
                     return $this->getInfoFeature($parameters);
                 }
                 break;
-
+                
+            case "getPermalink":
+                if (array_key_exists("lon", $parameters) && array_key_exists("lat", $parameters) && array_key_exists("zoom", $parameters) && array_key_exists("layers", $parameters)) {
+                    return $this->getPermalink($parameters);
+                }
+                break;
             default:
                 break;
         }
@@ -93,6 +98,13 @@ class Controller_AjaxDispatcher {
         $param['account'] = $controller_conf->getConfig("MC_USER");
         $apps = new Controller_Apps($param);
         return json_encode($apps->getInfoFeature());
+    }
+    
+    private function getPermalink($param) {
+        //call and get the keys
+        $controller_permalink = new Controller_Permalink($param);
+        $url = $controller_permalink->getPermalink();
+        return json_encode($url);
     }
 }
 

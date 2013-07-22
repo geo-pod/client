@@ -19,7 +19,7 @@ $action = isset($_GET['a']) ? $_GET['a'] : null;
 $options = isset($_GET['o']) ? json_decode($_GET['o'], true) : null;
 
 $parameters = array(
-    'action' => $action,
+    'action' => $action
 );
 
 if (is_array($options)) {
