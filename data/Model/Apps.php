@@ -4,8 +4,6 @@ require_once("../data/includes/libs/simple_html_dom.php");
 
 class Model_Apps {
 
-    const QUERY = "";
-
     private $account;
     private $key;
     private $appUrl;

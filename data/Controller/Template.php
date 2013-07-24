@@ -55,10 +55,11 @@ class Controller_Template {
         $this->smarty->assign('username', $username);
     }
 
-    public function drawPublicPage($title, $headtext, $logo) {
+    public function drawPublicPage($title, $headtext, $logo, $copyright) {
         $this->smarty->assign('gp_title', $title);
         $this->smarty->assign('gp_headtext', $headtext);
         $this->smarty->assign('gp_logo', $logo);
+        $this->smarty->assign('gp_copyright', $copyright);
         $toolbar = $this->getToolbar();
         $this->smarty->assign('toolbar', $toolbar);
         return $this->smarty->fetch('public.page.tpl');
@@ -71,10 +72,11 @@ class Controller_Template {
         return $this->smarty->fetch('login.page.tpl');
     }
     
-    public function drawPrivatePage($title, $headtext, $logo) {
+    public function drawPrivatePage($title, $headtext, $logo, $copyright) {
         $this->smarty->assign('gp_title', $title);
         $this->smarty->assign('gp_headtext', $headtext);
         $this->smarty->assign('gp_logo', $logo);
+        $this->smarty->assign('gp_copyright', $copyright);
         $toolbar = $this->getToolbar();
         $this->smarty->assign('toolbar', $toolbar);
         return $this->smarty->fetch('private.page.tpl');

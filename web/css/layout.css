@@ -50,7 +50,7 @@ html, body {
     clear: both;
     position: absolute;
     z-index: 10;
-    height: 30px;
+    height: 40px;
     width: 100%;
     min-width: 950px;
     background-color: #EDEDED;
@@ -212,4 +212,26 @@ ul.dynatree-container {
     height: 50px;
     position: absolute;
     background-color: #0f0;
+}
+#copyright {
+    z-index: 2000;
+    left: 400px;
+    bottom: 42px;
+    width: 300px;
+    height: 30px;
+    position: absolute;
+    background-color: #fff;
+    opacity: 0.8;
+
+    border-top-right-radius: 5px;
+    border-top-left-radius: 5px;
+}
+#kmltext {
+    width: 100%;
+    height: calc(100% - 40px);
+    font-size: 12px;
+}
+#kmldownload {
+    margin-top: 5px;
+    height: 30px;
 }

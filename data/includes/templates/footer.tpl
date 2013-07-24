@@ -6,6 +6,6 @@
 -->
 <div id="footer">
     <div id="mouse-position"></div>
-    <div id="output">s</div>
+    <div id="output"></div>
 </div>
 

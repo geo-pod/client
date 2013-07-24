@@ -43,16 +43,26 @@ class Controller_AjaxDispatcher {
                     return $this->getCapabilities($parameters['schema']);
                 }
                 break;
-                
+
             case "useApps":
                 if (array_key_exists("lon", $parameters) && array_key_exists("lat", $parameters) && array_key_exists("layers", $parameters)) {
                     return $this->getInfoFeature($parameters);
                 }
                 break;
-                
+
             case "getPermalink":
-                if (array_key_exists("lon", $parameters) && array_key_exists("lat", $parameters) && array_key_exists("zoom", $parameters) && array_key_exists("layers", $parameters)) {
+                if (array_key_exists("lon", $parameters) && array_key_exists("lat", $parameters) && array_key_exists("zoom", $parameters) && array_key_exists("layers", $parameters) && array_key_exists("lName", $parameters)) {
                     return $this->getPermalink($parameters);
+                }
+                break;
+            case "checkPermalink":
+                if (array_key_exists("lon", $parameters) && array_key_exists("lat", $parameters) && array_key_exists("zoom", $parameters) && array_key_exists("layers", $parameters) && array_key_exists("lName", $parameters)) {
+                    return $this->checkPermalink($parameters);
+                }
+                break;
+            case "searchAddress":
+                if (array_key_exists("value", $parameters)) {
+                    return $this->searchAddress($parameters);
                 }
                 break;
             default:
@@ -91,7 +101,7 @@ class Controller_AjaxDispatcher {
         $url = $controller->getConfig("MC_WMS") . $controller->getConfig("MC_USER") . "/";
         return json_encode($url);
     }
-    
+
     private function getInfoFeature($param) {
         $controller_conf = new Controller_Config();
         $param['url'] = $controller_conf->getConfig("MC_APP_INFO_FEATURE");
@@ -99,13 +109,28 @@ class Controller_AjaxDispatcher {
         $apps = new Controller_Apps($param);
         return json_encode($apps->getInfoFeature());
     }
-    
+
     private function getPermalink($param) {
         //call and get the keys
         $controller_permalink = new Controller_Permalink($param);
         $url = $controller_permalink->getPermalink();
         return json_encode($url);
     }
+
+    private function checkPermalink($param) {
+        //call and get the keys
+        $controller_permalink = new Controller_Permalink($param);
+        return json_encode($controller_permalink->checkPermalink());
+    }
+    
+    private function searchAddress($param) {
+        //call and get the keys
+        $controller_address = new Controller_Address();
+        $result = $controller_address->search($param['value']);
+        //return json_encode($result);
+        return $result;
+    }
+
 }
 
 ?>

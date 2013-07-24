@@ -44,7 +44,8 @@ class Controller_Geopod {
         $title = $this->config->getConfig("GP_TITLE");
         $headtext = $this->config->getConfig("GP_LABEL");
         $logo = $this->config->getConfig("GP_LOGO");
-        return $this->template->drawPublicPage($title, $headtext, $logo);
+        $copyright = $this->config->getConfig("GP_COPYRIGHT");
+        return $this->template->drawPublicPage($title, $headtext, $logo, $copyright);
     }
 
     private function getLoginPage() {
@@ -58,7 +59,8 @@ class Controller_Geopod {
         $title = $this->config->getConfig("GP_TITLE");
         $headtext = $this->config->getConfig("GP_LABEL");
         $logo = $this->config->getConfig("GP_LOGO");
-        return $this->template->drawPrivatePage($title, $headtext, $logo);
+        $copyright = $this->config->getConfig("GP_COPYRIGHT");
+        return $this->template->drawPrivatePage($title, $headtext, $logo, $copyright);
     }
     
     private function getPermalinkPage() {
@@ -107,9 +109,9 @@ class Controller_Geopod {
                 }
                 break;
 
-            case 'permalink':
-                $this->getPermalinkPage();
-                break;
+//            case 'permalink':
+//                $this->getPermalinkPage();
+//                break;
 
             default:
             case 'map-viso':

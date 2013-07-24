@@ -2,7 +2,10 @@
  * Variable initializer & variable declaration
  *************************************************************************** */
 //OpenLayers variable
-var map, layerToEdit, myWms, baseLayer, layerFeatureInfo = null, drawLayers;
+
+//drawLayers to delete
+var map, layerToEdit, myWms, baseLayer, layerFeatureInfo = null, drawLayers, drawLayer, drawControls, layerAddress = null, listSelectedFeatures = null;
+var modifyController = null, dragController = null;
 var gp_controls; // = new Array();
 var GP_LAT, GP_LON, GP_ZOOM, GP_MAX_BBOX, GP_ACTION;
 var MC_USER, MC_SQL_API, MC_CONTROLLER, MC_WMS;
@@ -53,25 +56,12 @@ $(document).ready(function() {
         }).done(function(data) {
         });
     }
-    
-    console.log(window.location.search);
-    
-//    function getAction() {
-//        return $.getJSON(dispatcherUrl, {
-//            a: "getAction",
-//        }).done(function(action) {
-//            console.log(action)
-//        });
-//    }
-    
+
+    GP_ACTION = url('?action');
 //The keys of the configuration that we are looking for
     var keys = ["GP_LAT", "GP_LON", "GP_ZOOM", "MC_USER", "MC_SQL_API", "MC_CONTROLLER", "MC_WMS", "GP_MAX_BBOX"];
     // When the ajax call is complite the varibles will be affected
     $.when(getConf(keys)).done(function(data) {
-//        if (action !== null) {
-//            console.log(action)
-//            GP_ACTION = action;
-//        }
         if (data["GP_LAT"] !== null) {
             GP_LAT = data["GP_LAT"];
         }
@@ -117,14 +107,14 @@ $(document).bind("initdone", function() {
         units: "m",
         //resolutions: [650, 500, 250, 100, 50, 20, 10, 5, 2.5, 2, 1.5],
         //restrictedExtent: GP_MAX_BBOX,
-        controls: [],
-        //fractionalZoom: false,
-        //autoUpdateSize: true,
+        controls: []
+                //fractionalZoom: false,
+                //autoUpdateSize: true,
 //        minResolution: 'auto',
 //        maxResolution: 'auto',
 //        minResolution: 0.02197265625,
 //        maxResolution: 0.3515625
-        //maxResolution: 0.02197265625
+                //maxResolution: 0.02197265625
 
 //        scales: [55367980.3125, 27683990.15625, 13841995.078125,
 //            6920997.5390625],
@@ -148,8 +138,8 @@ $(document).bind("initdone", function() {
         "Line": {
             strokeWidth: 1,
             strokeOpacity: 1,
-            strokeColor: "#f67b17", //f67b17
-            //strokeDashstyle: "dash"
+            strokeColor: "#f67b17" //f67b17
+                    //strokeDashstyle: "dash"
         },
         "Polygon": {
             strokeWidth: 2,
@@ -180,7 +170,7 @@ $(document).bind("initdone", function() {
     baseMaps.children.push({title: baseLayer.name, key: baseLayer.id});
     map.addLayer(baseLayer);
     hideLayer(baseLayer);
-
+    
     // The center of the map is loaded from the config file
     var lonLat = new OpenLayers.LonLat(GP_LON, GP_LAT).transform(
             new OpenLayers.Projection("EPSG:4326"), // transform from WGS 1984
@@ -190,29 +180,63 @@ $(document).bind("initdone", function() {
     /** ***************************************************************************
      * Controls
      *************************************************************************** */
-    var drawPointLayer = new OpenLayers.Layer.Vector("Point Layer");
-    var drawLineLayer = new OpenLayers.Layer.Vector("Line Layer");
-    var drawPolygonLayer = new OpenLayers.Layer.Vector("Polygon Layer");
-    var drawboxLayer = new OpenLayers.Layer.Vector("Box layer");
-    drawLayers = [drawPointLayer, drawLineLayer, drawPolygonLayer, drawboxLayer];
+    drawLayer = new OpenLayers.Layer.Vector("Draw Layer");
+    drawLayer.events.on({
+        'featureselected': function(feature) {
+            listSelectedFeatures = this.selectedFeatures;
+        },
+        'featureunselected': function(feature) {
+            listSelectedFeatures = null;
+        }
+    });
 
-    map.addLayers([drawPointLayer, drawLineLayer, drawPolygonLayer, drawboxLayer]);
+
+    //drawLayers = [drawPointLayer, drawLineLayer, drawPolygonLayer, drawboxLayer];
+    //drawLayers = [drawLayer];
+
+//    $.each(drawLayers, function(key, layer) {
+//        layer.events.on({
+//            'featureselected': function(feature) {
+//                var newLayer = this;
+//                listSelectedFeatures = this.selectedFeatures;
+//            },
+//            'featureunselected': function(feature) {
+//                listSelectedFeatures = null;
+//            }
+//        });
+//    });
+    map.addLayers([drawLayer]);
+//    var size = new OpenLayers.Size(21, 25);
+//    var offset = new OpenLayers.Pixel(-(size.w / 2), -size.h);
+//    var icon = new OpenLayers.Icon('http://www.openlayers.org/dev/img/marker.png', size, offset);
     // Controls user for drawing
-    var drawControls = {
-        point: new OpenLayers.Control.DrawFeature(drawPointLayer,
+    drawControls = {
+        point: new OpenLayers.Control.DrawFeature(drawLayer,
                 OpenLayers.Handler.Point),
-        line: new OpenLayers.Control.DrawFeature(drawLineLayer,
+        line: new OpenLayers.Control.DrawFeature(drawLayer,
                 OpenLayers.Handler.Path),
-        polygon: new OpenLayers.Control.DrawFeature(drawPolygonLayer,
+        polygon: new OpenLayers.Control.DrawFeature(drawLayer,
                 OpenLayers.Handler.Polygon),
-        box: new OpenLayers.Control.DrawFeature(drawboxLayer,
+        box: new OpenLayers.Control.DrawFeature(drawLayer,
                 OpenLayers.Handler.RegularPolygon, {
             handlerOptions: {
                 sides: 4,
                 irregular: true
             }
-        })
+        }),
+        select: new OpenLayers.Control.SelectFeature(
+                drawLayer,
+                {
+                    clickout: true, toggle: false,
+                    multiple: false, hover: false,
+                    toggleKey: "ctrlKey", // ctrl key removes from selection
+                    multipleKey: "shiftKey" // shift key adds to selection
+                }
+        ),
+        modify: new OpenLayers.Control.ModifyFeature(drawLayer),
+        drag: new OpenLayers.Control.DragFeature(drawLayer)
     };
+
     //Controls used for measuring
     var measureControls = {
         line: new OpenLayers.Control.Measure(
@@ -266,7 +290,7 @@ $(document).bind("initdone", function() {
     $.each(gp_controls, function(key, control) {
         if (key === "measure") {
             $.each(control, function(key, control) {
-                //These events call the method handleMeasurements in order to show the measures
+//These events call the method handleMeasurements in order to show the measures
                 control.events.on({
                     "measure": handleMeasurements,
                     "measurepartial": handleMeasurements
@@ -281,7 +305,6 @@ $(document).bind("initdone", function() {
             map.addControl(control);
         }
     });
-
     /** ***************************************************************************
      * Events
      *************************************************************************** */
@@ -292,8 +315,7 @@ $(document).bind("initdone", function() {
     map.events.register("mousemove", map, function(e) {
         var pixel = new OpenLayers.Pixel(e.xy.x, e.xy.y);
         var lonlat = map.getLonLatFromPixel(pixel);
-        lonlat = lonlat.transform(new OpenLayers.Projection('EPSG:900913'), new OpenLayers.Projection('EPSG:4326'))
-
+        lonlat = lonlat.transform(new OpenLayers.Projection('EPSG:900913'), new OpenLayers.Projection('EPSG:4326'));
         var source = new Proj4js.Proj("EPSG:4326");
         var dest = new Proj4js.Proj("EPSG:21781");
         var p = new Proj4js.Point(lonlat.lon, lonlat.lat);
@@ -301,7 +323,6 @@ $(document).bind("initdone", function() {
         var infoLonLat = "EPSG:21781: " + p.x.toFixed(2) + " | " + p.y.toFixed(2);
         OpenLayers.Util.getElement("mouse-position").innerHTML = infoLonLat;
     });
-
     /** ***************************************************************************
      * Loading all the public WMS from the GetCapabilities
      *************************************************************************** */
@@ -309,7 +330,6 @@ $(document).bind("initdone", function() {
         schema: "public"
     });
     addOverLayers(options);
-
     /** ***************************************************************************
      * DynaTree - Base Layers
      *************************************************************************** */
@@ -325,7 +345,6 @@ $(document).bind("initdone", function() {
 
                 var baseLayerToVisualize = map.getLayer(node.data.key);
                 node.toggleSelect();
-
                 $.each(baseMaps.children, function(key, val) {
                     if (baseLayerToVisualize.id !== val.key) {
                         hideLayer(map.getLayer(val.key));
@@ -346,7 +365,6 @@ $(document).bind("initdone", function() {
         heightStyle: "content",
         collapsible: true
     });
-
     //Generate the toolbar
     var toolbar = $("#menu");
     $("#menu").menu({
@@ -355,108 +373,65 @@ $(document).bind("initdone", function() {
             at: 'left bottom'
         }
     });
+    $("#address").autocomplete({
+        source: function(request, response) {
 
+            var values = request.term.toLowerCase().split(" ");
+            var where = new Array();
+            $.each(values, function(key, val) {
+                where.push("lower(voie) like '%" + val + "%'");
+            });
+            var query = "select objectid, localite, voie, nom, no_entree, the_geom from public.adresse_point where " + where.join(" AND ") + " order by no_entree, voie limit 10";
+            var url = MC_SQL_API + MC_USER + '?q=' + query + '&jsonp_callback=mydata';
+            $.ajax({
+                type: 'GET',
+                url: url,
+                async: false,
+                jsonpCallback: 'mydata',
+                contentType: "application/json",
+                dataType: 'jsonp',
+                success: function(data) {
+
+                    response($.map(data.features, function(item) {
+                        var obj;
+                        var street;
+                        street = item.properties.voie.split(",");
+                        if ($(street).size() > 1) {
+                            obj = {
+                                label: street[1] + " " + street[0] + ", " + item.properties.no_entree,
+                                value: street[1] + " " + street[0] + ", " + item.properties.no_entree,
+                                feature: item
+                            };
+                        } else {
+                            obj = {
+                                label: street[0] + ", " + item.properties.no_entree,
+                                value: street[0] + ", " + item.properties.no_entree,
+                                feature: item
+                            };
+                        }
+                        return obj;
+                    }));
+                }
+            });
+        },
+        minLength: 2,
+        select: function(event, ui) {
+            addAddress(ui.item.feature);
+        }
+    });
     // Toolbar actions
     $("#menu li.ui-menu-item").click(function(event) {
-        var lastAction = $(toolbar).find("a.gp-button-active span").attr('name');
+        var lastAction = $(toolbar).find("li a.gp-button-active span").last().attr('name'); //.attr('name');
         var child = $(this).find('a');
         var isMenu = false;
         if ($(this).find('a span[name=menu]').attr('name') === "menu") {
             isMenu = true;
         }
-
+        var elementName = $(this).find('span').attr('name');
         if ($(child).hasClass("gp-button-deactive") && !isMenu) {
-            var tmp;
-            var name = $(this).find('span').attr('name');
-
-            if (lastAction === "information-get") {
-                map.events.unregister('click', map, getFeatureInfo);
-            }
-
-            if (name !== undefined) {
-                $(toolbar).find("a.gp-button-active").addClass("gp-button-deactive");
-                $(toolbar).find("a.gp-button-active").removeClass("gp-button-active");
-
-                // Case: measure
-                if (name.search("measure") >= 0) {
-                    tmp = $("#measuremenu").parent('a');
-                    $("#" + name).parent().addClass("gp-button-active");
-                    $("#" + name).parent().removeClass("gp-button-deactive");
-                    toggleControl(name);
-                    // Case: draw
-                } else if (name.search("draw") >= 0) {
-                    tmp = $("#drawmenu").parent();
-                    if (name.search("clear") >= 0) {
-                        //clearDrawLayer();
-                    } else {
-                        toggleControl(name);
-                    }
-                    $("#" + name).parent().addClass("gp-button-active");
-                    $("#" + name).parent().removeClass("gp-button-deactive");
-                    // Case: Information
-                } else if (name.search("information") >= 0) {
-                    tmp = $("#informationmenu").parent();
-                    if (name.search("get") >= 0) {
-                        map.events.register('click', map, getFeatureInfo);
-                    } else {
-                        map.events.unregister('click', map, getFeatureInfo);
-                        layerFeatureInfo.removeAllFeatures();
-                    }
-                    $("#" + name).parent().addClass("gp-button-active");
-                    $("#" + name).parent().removeClass("gp-button-deactive");
-                    toggleControl("disableall");
-                    // Case: permalink
-                } else if (name === "permalink") {
-                    $("#permalink-content").dialog({
-                        title: "Permalink",
-                        resizable: false,
-                        modal: true,
-                        width: 600,
-                        height: 200,
-                        zIndex: 1100,
-                        open: function() {
-                            var url, a;
-                            var  element = $(this);
-                            var loc = window.location;
-                            var options = JSON.stringify({
-                                lon: "8768",
-                                lat: "09878",
-                                zoom: map.zoom,
-                                layers: "private.parks;public.rivers;public.parcels"
-                            });
-                            $.getJSON(dispatcherUrl, {
-                                a: "getPermalink",
-                                o: options
-                            }).done(function(data) {
-                                url = loc.protocol + "//" + loc.host + loc.pathname + data;
-                                a = $('<a>').attr('href', url);
-                                if (url.length > 70) {
-                                    $(a).html(url.substring(0, 70) + "...");
-                                } else {
-                                    $(a).html(url);
-                                }
-                                $(element).append(a);
-                            $(element).css('font-size', '12px');
-                            });
-                        },
-                        close: function() {
-                            $(this).empty();
-                        }
-                    });
-                } else {
-                    toggleControl(name);
-                    tmp = $("#" + name).parent();
-                }
-
-                $(tmp).addClass("gp-button-active");
-                $(tmp).removeClass("gp-button-deactive");
-
-            }
+            controlManager(elementName, lastAction);
         }
     });
-
-
-
     /** ***************************************************************************
      * Functions
      *************************************************************************** */
@@ -486,17 +461,90 @@ $(document).bind("initdone", function() {
      */
     function addOverLayers(options) {
         if (GP_ACTION === "permalink") {
-            console.log("Permalink ;)) ");
-        }
-        $.getJSON(dispatcherUrl, {
-            a: "getCapabilities",
-            o: options
-        }, function(data) {
-            var val;
-            var index = 1;
-            if (data.Capability.Layer.Layer instanceof Array) {
+            //Check if permalink is valid
+            var lonlat = new OpenLayers.LonLat(url('?lon'), url('?lat'));
+            var zoom = url('?z');
+            // http://phpjs.org/functions/urldecode/
+            var layersName = decodeURIComponent((url('?lName') + '').replace(/\+/g, '%20'));
+            
+            var options = JSON.stringify({
+                lon: url('?lon'),
+                lat: url('?lat'),
+                zoom: url('?z'),
+                layers: url('?layers'),
+                lName: layersName,
+                key: url('?k')
+            });
+            $.getJSON(dispatcherUrl, {
+                a: "checkPermalink",
+                o: options
+            }, function(isValid) {
+                if (isValid) {
+                    var layers = url('?layers').split(";");
+                    var layersName = decodeURIComponent((url('?lName') + '').replace(/\+/g, '%20')).split(";");
+                    $.each(layers, function(key, val) {
+                        var schema = val.split('.');
+                        var li = $("<li>" + val + "</li>");
+                        $("#list").append(li);
+                        myWms = new OpenLayers.Layer.WMS(
+                                val,
+                                MC_WMS + "/" + MC_USER + "/" + schema[0] + "/",
+                                {
+                                    layers: val,
+                                    transparent: "true",
+                                    format: "image/png",
+                                    srs: "EPSG:900913"
+                                },
+                        {isBaseLayer: false},
+                        {singleTile: false}
+                        );
+                        map.addLayer(myWms);
+                        overLayers.children.push({title: decodeURIComponent(layersName[key]), key: val, select: true});
+                        var legendUrl = MC_WMS + "/" + MC_USER + "/" + schema[0] + "/?LAYER=" + val + "&SERVICE=WMS&VERSION=1.1.1&REQUEST=getlegendgraphic&FORMAT=image/png";
+                        var img = $("<img>");
+                        $(img).attr("src", legendUrl);
+                        $("#legend").append($("<li>").append(img));
+                    });
+                    addOverLayersTree(overLayers);
 
-                $.each(data.Capability.Layer.Layer, function(key, val) {
+                    console.log(lonlat)
+                    console.log(zoom);
+                    map.setCenter(lonlat, zoom);
+                }
+            });
+        } else {
+            $.getJSON(dispatcherUrl, {
+                a: "getCapabilities",
+                o: options
+            }, function(data) {
+                var val;
+                var index = 1;
+                if (data.Capability.Layer.Layer instanceof Array) {
+
+                    $.each(data.Capability.Layer.Layer, function(key, val) {
+                        var li = $("<li>" + val.Name + "</li>");
+                        $("#list").append(li);
+                        myWms = new OpenLayers.Layer.WMS(
+                                val.Name,
+                                MC_WMS + "/" + MC_USER + "/public/",
+                                {
+                                    layers: val.Name,
+                                    transparent: "true",
+                                    format: "image/png",
+                                    srs: "EPSG:900913"
+                                },
+                        {isBaseLayer: false},
+                        {singleTile: false}
+                        );
+                        map.addLayer(myWms);
+                        overLayers.children.push({title: val.Title, key: val.Name, select: true});
+                        var legendUrl = MC_WMS + "/" + MC_USER + "/public/?LAYER=" + val.Name + "&SERVICE=WMS&VERSION=1.1.1&REQUEST=getlegendgraphic&FORMAT=image/png";
+                        var img = $("<img>");
+                        $(img).attr("src", legendUrl);
+                        $("#legend").append($("<li>").append(img));
+                    });
+                } else {
+                    val = data.Capability.Layer.Layer;
                     var li = $("<li>" + val.Name + "</li>");
                     $("#list").append(li);
                     myWms = new OpenLayers.Layer.WMS(
@@ -513,36 +561,14 @@ $(document).bind("initdone", function() {
                     );
                     map.addLayer(myWms);
                     overLayers.children.push({title: val.Title, key: val.Name, select: true});
-                    var legendUrl = MC_WMS + "/" + MC_USER + "/public/?LAYER=" + val.Name + "&SERVICE=WMS&VERSION=1.1.1&REQUEST=getlegendgraphic&FORMAT=image/png"
+                    var legendUrl = MC_WMS + "/" + MC_USER + "/public/?LAYER=" + val.Name + "&SERVICE=WMS&VERSION=1.1.1&REQUEST=getlegendgraphic&FORMAT=image/png";
                     var img = $("<img>");
                     $(img).attr("src", legendUrl);
                     $("#legend").append($("<li>").append(img));
-                });
-            } else {
-                val = data.Capability.Layer.Layer;
-                var li = $("<li>" + val.Name + "</li>");
-                $("#list").append(li);
-                myWms = new OpenLayers.Layer.WMS(
-                        val.Name,
-                        MC_WMS + "/" + MC_USER + "/public/",
-                        {
-                            layers: val.Name,
-                            transparent: "true",
-                            format: "image/png",
-                            srs: "EPSG:900913"
-                        },
-                {isBaseLayer: false},
-                {singleTile: false}
-                );
-                map.addLayer(myWms);
-                overLayers.children.push({title: val.Title, key: val.Name, select: true});
-                var legendUrl = MC_WMS + "/" + MC_USER + "/public/?LAYER=" + val.Name + "&SERVICE=WMS&VERSION=1.1.1&REQUEST=getlegendgraphic&FORMAT=image/png"
-                var img = $("<img>");
-                $(img).attr("src", legendUrl);
-                $("#legend").append($("<li>").append(img));
-            }
-            addOverLayersTree(overLayers);
-        });
+                }
+                addOverLayersTree(overLayers);
+            });
+        }
     }
 
     /**
@@ -602,9 +628,9 @@ $(document).bind("initdone", function() {
         var element = document.getElementById('output');
         var out = "";
         if (order === 1) {
-            out += "measure: " + measure.toFixed(3) + " " + units;
+            out += "Mesure : " + measure.toFixed(3) + " " + units;
         } else {
-            out += "measure: " + measure.toFixed(3) + " " + units + "<sup>2</" + "sup>";
+            out += "Mesure : " + measure.toFixed(3) + " " + units + "<sup>2</" + "sup>";
         }
         element.innerHTML = out;
     }
@@ -663,7 +689,7 @@ $(document).bind("initdone", function() {
                 fill: true,
                 fillColor: "#ff0000", // SLD: Fill
                 fillOpacity: 0.3,
-                strokeColor: "#16CAF2", // SLD: Stroke             strokeWidth: 2
+                strokeColor: "#16CAF2" // SLD: Stroke             strokeWidth: 2
             };
             layerFeatureInfo.style = style;
             map.addLayer(layerFeatureInfo);
@@ -674,9 +700,7 @@ $(document).bind("initdone", function() {
         //lonlat = lonlat.transform(new OpenLayers.Projection('EPSG:900913'), new OpenLayers.Projection('EPSG:4326'));
         var tree;
         try {
-            tree = $("#over-layers").dynatree("getTree")
-
-
+            tree = $("#over-layers").dynatree("getTree");
             var selectedNodes = tree.getSelectedNodes();
             var layers = new Array();
             var selKeys = $.map(selectedNodes, function(selNode) {
@@ -699,11 +723,9 @@ $(document).bind("initdone", function() {
                 // create WKT parser    
                 var wkt = new OpenLayers.Format.WKT();
                 var feature;
-
                 //Table
                 var tableArray = new Array();
                 var div = $('<div>').attr('id', 'myTable');
-
                 if (data === null) {
                     $(div).append("<h3>Pas de données</h3>");
                 } else {
@@ -726,11 +748,9 @@ $(document).bind("initdone", function() {
                         tableArray.push(arrayTmp);
                     });
                     layerFeatureInfo.redraw();
-
                     var size = $(data.features).size();
                     for (var i = 0; i < size; i++) {
                         var title = data.features[i].properties.title;
-
                         var val = tableArray[i];
                         if (title === "Batiments") {
                             //GET OWNER
@@ -738,7 +758,6 @@ $(document).bind("initdone", function() {
                         var tableId = "data-table-" + i;
                         $(div).append("<h3>" + title + "</h3>");
                         $(div).append($("<table>").attr("id", tableId));
-
                         $(div).find("#" + tableId).dataTable({
                             bJQueryUI: true,
                             bScrollCollapse: true,
@@ -761,16 +780,16 @@ $(document).bind("initdone", function() {
                     modal: true,
                     width: 600,
                     height: 400,
-                    zIndex: 3000,
-                    //            open: function(event, ui) {
-                    //                $('#data-table').css('overflow', 'hidden');
+                    zIndex: 3000
+                            //            open: function(event, ui) {
+                            //                $('#data-table').css('overflow', 'hidden');
 //            }
                 });
             });
         } catch (e) {
             var value = 0;
             var div = $('<div>').attr('id', 'message');
-            $(div).html("Pas de données")
+            $(div).html("Pas de données");
             $("#content").append(div);
             var timer = setInterval(function() {
                 value++;
@@ -780,6 +799,44 @@ $(document).bind("initdone", function() {
                 }
             }, 10);
         }
+    }
+
+
+    /**
+     * 
+     * @param {type} address
+     * @returns {undefined}
+     */
+    function addAddress(address) {
+        // Check if the geometry is correct
+        if ($(address.geometry.coordinates).size() > 2) {
+            var coords = new Array();
+            for (var i = 0; i < 2; i++) {
+                coords.push(address.geometry.coordinates[i]);
+            }
+            address.geometry.coordinates = coords;
+        }
+        //Check if the layer exists
+        if (layerAddress === null) {
+            layerAddress = new OpenLayers.Layer.Vector("Address Info");
+//            style = {
+//                fill: true,
+//                fillColor: "#00ff00", // SLD: Fill
+//                fillOpacity: 0.8,
+//                strokeColor: "#16CAF2", // SLD: Stroke             strokeWidth: 2
+//                strokeWidth: 10
+//            };
+//            layerAddress.style = style;
+//            layerAddress.setVisibility(true);
+            map.addLayer(layerAddress);
+        }
+        layerAddress.removeAllFeatures();
+        var geoJson = new OpenLayers.Format.GeoJSON();
+        var feature = geoJson.read(address, "Feature");
+        layerAddress.addFeatures(feature);
+        layerAddress.redraw();
+        var lonlat = new OpenLayers.LonLat(feature.geometry.x, feature.geometry.y);
+        map.setCenter(lonlat, 18);
     }
 
     /**
@@ -793,14 +850,229 @@ $(document).bind("initdone", function() {
         clip = new ZeroClipboard();
         clip.on('load', function(client) {
             clip.reposition();
-            console.log("loaded")
+            console.log("loaded");
         });
         clip.on('mousedown', function(client, args) {
             clip.reposition();
             clip.setText(msg);
             console.log("Copied: " + msg);
-        })
+        });
         clip.glue(me);
+    }
+
+    function removeSelectedFeature() {
+        if (listSelectedFeatures !== null) {
+
+            if (listSelectedFeatures instanceof Array) {
+                console.log("1")
+                var vectorLayer;
+                $.each(listSelectedFeatures, function(key, feature) {
+                    vectorLayer = map.getLayer(feature.layer.id);
+                    vectorLayer.removeFeatures(feature);
+                    vectorLayer.redraw();
+                });
+            }
+        }
+    }
+
+    function controlManager(thisElementName, lastAction) {
+        var tmp;
+        var name = thisElementName;
+        if (lastAction === "information-get") {
+            map.events.unregister('click', map, getFeatureInfo);
+        }
+        if (name !== undefined) {
+            if (name !== "draw-clear") {
+                $(toolbar).find("a.gp-button-active").addClass("gp-button-deactive");
+                $(toolbar).find("a.gp-button-active").removeClass("gp-button-active");
+            }
+
+            // Case: measure
+            if (name.search("measure") >= 0) {
+                tmp = $("#measuremenu").parent('a');
+                $("#" + name).parent().addClass("gp-button-active");
+                $("#" + name).parent().removeClass("gp-button-deactive");
+                toggleControl(name);
+                $(tmp).addClass("gp-button-active");
+                $(tmp).removeClass("gp-button-deactive");
+                // Case: draw
+            } else if (name.search("draw") >= 0) {
+                tmp = $("#drawmenu").parent();
+                if (name.search("clear") >= 0) {
+                    removeSelectedFeature();
+                } else if (name.search("modify") >= 0) {
+                    if (listSelectedFeatures !== null) {
+                        gp_controls.draw.modify.selectFeature(listSelectedFeatures[0]);
+                    }
+                    toggleControl(name);
+                    $("#" + name).parent().addClass("gp-button-active");
+                    $("#" + name).parent().removeClass("gp-button-deactive");
+                    $(tmp).addClass("gp-button-active");
+                    $(tmp).removeClass("gp-button-deactive");
+                } else if (name.search("drag") >= 0) {
+                    toggleControl(name);
+                    $("#" + name).parent().addClass("gp-button-active");
+                    $("#" + name).parent().removeClass("gp-button-deactive");
+                    $(tmp).addClass("gp-button-active");
+                    $(tmp).removeClass("gp-button-deactive");
+                } else if (name.search("export") >= 0) {
+                    var kml = GetKMLFromFeatures(drawLayer.features);
+                    if ($("#kmldialog").length) {
+                        console.log('esisto')
+                        updateKml(kml);
+                    } else {
+                        console.log('nn esisto')
+                        generateDialog(kml);
+                    }
+                    $("#kmldialog").dialog("open");
+                    exportKml();
+                } else {
+                    toggleControl(name);
+                    $("#" + name).parent().addClass("gp-button-active");
+                    $("#" + name).parent().removeClass("gp-button-deactive");
+                    $(tmp).addClass("gp-button-active");
+                    $(tmp).removeClass("gp-button-deactive");
+                }
+
+                // Case: Information
+            } else if (name.search("information") >= 0) {
+                tmp = $("#informationmenu").parent();
+                if (name.search("get") >= 0) {
+                    map.events.register('click', map, getFeatureInfo);
+                } else {
+                    map.events.unregister('click', map, getFeatureInfo);
+                    layerFeatureInfo.removeAllFeatures();
+                }
+                $("#" + name).parent().addClass("gp-button-active");
+                $("#" + name).parent().removeClass("gp-button-deactive");
+                toggleControl("disableall");
+                $(tmp).addClass("gp-button-active");
+                $(tmp).removeClass("gp-button-deactive");
+                // Case: permalink
+            } else if (name === "permalink") {
+                $("#permalink-content").dialog({
+                    title: "Permalink",
+                    resizable: false,
+                    modal: true,
+                    width: 600,
+                    height: 200,
+                    zIndex: 1100,
+                    open: function() {
+                        var url, a;
+                        var element = $(this);
+                        var loc = window.location;
+                        var layers = new Array();
+                        var layersName = new Array();
+                        var nodes = $("#over-layers").dynatree("getSelectedNodes");
+                        $.each(nodes, function(key, node) {
+                            layers.push(node.data.key);
+                            layersName.push(node.data.title)
+                        });
+
+                        var lonlat = map.getExtent().getCenterLonLat();
+
+                        var options = JSON.stringify({
+                            lon: lonlat.lon,
+                            lat: lonlat.lat,
+                            zoom: map.zoom,
+                            layers: layers.join(";"),
+                            lName: layersName.join(";") 
+                        });
+                        $.getJSON(dispatcherUrl, {
+                            a: "getPermalink",
+                            o: options
+                        }).done(function(data) {
+                            url = loc.protocol + "//" + loc.host + loc.pathname + data;
+                            a = $('<a>').attr('href', url);
+                            if (url.length > 70) {
+                                $(a).html(url.substring(0, 70) + "...");
+                            } else {
+                                $(a).html(url);
+                            }
+                            $(element).append(a);
+                            $(element).css('font-size', '12px');
+                        });
+                    },
+                    close: function() {
+                        $(this).empty();
+                    }
+                });
+                $(tmp).addClass("gp-button-active");
+                $(tmp).removeClass("gp-button-deactive");
+                //Print
+            } else if (name === "print") {
+
+                //Else...
+            } else {
+                toggleControl(name);
+                tmp = $("#" + name).parent();
+                $(tmp).addClass("gp-button-active");
+                $(tmp).removeClass("gp-button-deactive");
+            }
+        }
+    }
+
+    function GetKMLFromFeatures(features) {
+        var format = new OpenLayers.Format.KML({
+            'maxDepth': 10,
+            'extractStyles': true,
+            'internalProjection': map.baseLayer.projection,
+            'externalProjection': new OpenLayers.Projection("EPSG:4326")
+        });
+
+        return format.write(features);
+    }
+
+    function exportKml() {
+        //$("#downloadify").downloadify({
+        Downloadify.create('kmldownload', {
+            filename: function() {
+                var d = new Date();
+                var today = d.getDate() + '-' + d.getMonth() + '-' + d.getFullYear();
+                return 'geopod_kml_' + today + '.txt';
+
+            },
+            data: function() {
+                return GetKMLFromFeatures(drawLayer.features);
+            },
+            onComplete: function() {
+                alert('Your File Has Been Saved!');
+            },
+            onCancel: function() {
+                alert('You have cancelled the saving of this file.');
+            },
+            onError: function() {
+                alert('You must put something in the File Contents or there will be nothing to save!');
+            },
+            swf: 'js/Downloadify/media/downloadify.swf',
+            downloadImage: 'js/Downloadify/images/download_2.png',
+            width: 100,
+            height: 30,
+            transparent: true,
+            append: false
+        });
+    }
+
+    function updateKml(data) {
+        $('#kmltext').html(data);
+    }
+    function generateDialog(data) {
+        var div = $('<div>').attr('id', 'kmldialog');
+        var textarea = $('<textarea>').attr('id', 'kmltext').html(data);
+        var buttonDonwload = $('<p>').attr({
+            id: 'kmldownload',
+        });
+        $(div).append(textarea);
+        $(div).append(buttonDonwload);
+
+        $(div).dialog({
+            title: "Exporter en format KML",
+            autoOpen: false,
+            height: 300,
+            width: 500,
+            modal: true
+
+        });
     }
     //END
 });

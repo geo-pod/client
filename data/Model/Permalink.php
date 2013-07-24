@@ -6,9 +6,10 @@ class Model_Permalink {
     private $lat;
     private $zoom;
     private $layers;
+    private $layersName;
     private $key;
 
-    public function __construct($lon, $lat, $zoom, $layers, $key = null) {
+    public function __construct($lon, $lat, $zoom, $layers, $layersName, $key = null) {
         if (!is_array($layers)) { //and others checks....
             return;
         }
@@ -16,6 +17,7 @@ class Model_Permalink {
         $this->lon = $lon;
         $this->zoom = $zoom;
         $this->layers = $layers;
+        $this->layersName = $layersName;
         $this->key = $key;
     }
 
@@ -23,7 +25,7 @@ class Model_Permalink {
         $key = $this->generateKey();
         $url = null;
         if ($key != null) {
-            $url = "?action=permalink&z=" . $this->zoom . "&lat=" . $this->lat . "&lon=" . $this->lon . "&layers=" . implode(";", $this->layers) . "&k=" . $key;
+            $url = "?action=permalink&z=" . $this->zoom . "&lat=" . $this->lat . "&lon=" . $this->lon . "&layers=" . implode(";", $this->layers) . "&lName=" . urlencode(implode(";", $this->layersName)) . "&k=" . $key;
         }
         return $url;
     }
@@ -31,6 +33,9 @@ class Model_Permalink {
     private function generateKey() {
         $tmp = null;
         foreach ($this->layers as $key => $value) {
+            $tmp = $tmp . $key . $value . "gp2013";
+        }
+        foreach ($this->layersName as $key => $value) {
             $tmp = $tmp . $key . $value . "gp2013";
         }
         return md5($tmp);

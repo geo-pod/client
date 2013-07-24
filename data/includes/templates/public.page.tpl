@@ -24,3 +24,5 @@
         <div id="legend"></div>
     </div>
 </div>
+<div id="copyright" ><p>{$gp_copyright}</p>
+</div>
